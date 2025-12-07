@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>薪金矿工 - 带薪摸鱼财富可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* 初始化页面样式 */
+        .setup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle, #667eea 0%, #764ba2 100%);
+        }
+
+        .setup-title {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .salary-input {
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 50px;
+            text-align: center;
+            margin-bottom: 1rem;
+            width: 300px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        .salary-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .start-btn {
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: none;
+            border-radius: 50px;
+            color: #333;
+            cursor: pointer;
+            transition: transform 0.3s;
+            font-weight: bold;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .switch-mode {
+            margin-top: 1rem;
+            color: #ccc;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* 主界面样式 */
+        .main-container {
+            display: none;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+
+        .money-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .money-amount {
+            font-size: 4rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255,215,0,0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .money-info {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-info {
+            font-size: 1rem;
+            color: #888;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 1rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .control-btn {
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 金钱动画 */
+        .coin {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #FFD700 0%, #FFA500 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+            animation: fall linear;
+            cursor: pointer;
+            z-index: 5;
+        }
+
+        .coin::before {
+            content: '¥';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        .cash {
+            position: absolute;
+            width: 60px;
+            height: 30px;
+            background: linear-gradient(90deg, #85bb65 0%, #5a8f41 100%);
+            border-radius: 3px;
+            animation: float linear;
+            z-index: 5;
+        }
+
+        .cash::before {
+            content: '¥100';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* 老板键伪装界面 */
+        .boss-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            z-index: 1000;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #d4d4d4;
+            overflow-y: auto;
+        }
+
+        .code-editor {
+            background: #1e1e1e;
+            border-radius: 5px;
+            padding: 20px;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .line-numbers {
+            color: #858585;
+            margin-right: 20px;
+            user-select: none;
+        }
+
+        .code-line {
+            margin: 2px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .comment { color: #6a9955; }
+        .function { color: #dcdcaa; }
+
+        /* 设置面板样式 */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .settings-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .settings-content h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #FFD700;
+            font-size: 1.5rem;
+        }
+
+        .setting-group {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #FFD700;
+            font-size: 1.1rem;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .setting-row input[type="number"],
+        .setting-row input[type="time"],
+        .setting-row select {
+            padding: 0.3rem;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .setting-row input[type="range"] {
+            flex: 1;
+            margin: 0 0.5rem;
+            accent-color: #FFD700;
+        }
+
+        .settings-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .settings-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .settings-btn:nth-child(1) {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .settings-btn:nth-child(2) {
+            background: linear-gradient(45deg, #ff9800, #e68900);
+            color: white;
+        }
+
+        .settings-btn:nth-child(3) {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .settings-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .money-amount {
+                font-size: 2.5rem;
+            }
+            
+            .setup-title {
+                font-size: 2rem;
+            }
+            
+            .salary-input {
+                width: 250px;
+                font-size: 1.2rem;
+            }
+
+            .settings-content {
+                width: 95%;
+                padding: 1rem;
+            }
+            
+            .setting-row {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .setting-row span {
+                margin-bottom: 0.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 初始化页面 -->
+        <div class="setup-container" id="setupContainer">
+            <h1 class="setup-title">💰 薪金矿工 💰</h1>
+            <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 20px; margin-bottom: 2rem;">
+                <input type="number" 
+                       class="salary-input" 
+                       id="salaryInput" 
+                       placeholder="请输入您的日薪（元）" 
+                       min="1"
+                       step="0.01">
+                <div style="margin: 1rem 0; color: #ccc;">或</div>
+                <input type="number" 
+                       class="salary-input" 
+                       id="hourlyInput" 
+                       placeholder="请输入您的时薪（元）" 
+                       min="1"
+                       step="0.01"
+                       style="display: none;">
+                <div style="margin: 1rem 0; color: #ccc;">工作时间设置</div>
+                <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin-bottom: 1rem;">
+                    <input type="time" 
+                           id="workStartTime" 
+                           value="09:00"
+                           style="padding: 0.5rem; border-radius: 10px; border: none; text-align: center;">
+                    <span style="color: #ccc;">至</span>
+                    <input type="time" 
+                           id="workEndTime" 
+                           value="18:00"
+                           style="padding: 0.5rem; border-radius: 10px; border: none; text-align: center;">
+                </div>
+                <div style="color: #aaa; font-size: 0.9rem;">
+                    工作时长：<span id="workHoursDisplay">9</span>小时
+                </div>
+            </div>
+            <button class="start-btn" onclick="startMining()">开始赚钱！</button>
+            <div class="switch-mode" onclick="toggleSalaryMode()" id="modeToggle">切换为时薪输入</div>
+        </div>
+
+    <!-- 主界面 -->
+        <div class="main-container" id="mainContainer">
+            <div class="money-display">
+                <div class="money-amount" id="moneyAmount">¥ 0.00</div>
+                <div class="money-info" id="moneyInfo">今日已赚取</div>
+                <div class="time-info" id="timeInfo">本次摸鱼时长：0小时0分钟</div>
+            </div>
+
+            <div class="control-panel">
+                <button class="control-btn" onclick="togglePause()" id="pauseBtn">暂停</button>
+                <button class="control-btn" onclick="toggleMute()" id="muteBtn">静音</button>
+                <button class="control-btn" onclick="toggleSettings()">⚙️设置</button>
+                <button class="control-btn" onclick="resetSettings()">重置</button>
+                <button class="control-btn" onclick="showHelp()">帮助</button>
+            </div>
+
+            <!-- 设置面板 -->
+            <div class="settings-panel" id="settingsPanel">
+                <div class="settings-content">
+                    <h3>⚙️ 设置面板</h3>
+                    
+                    <div class="setting-group">
+                        <label>薪资设置</label>
+                        <div class="setting-row">
+                            <span>当前模式：</span>
+                            <select id="settingsSalaryMode" onchange="updateSalaryMode()">
+                                <option value="daily">日薪模式</option>
+                                <option value="hourly">时薪模式</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <span>薪资金额：</span>
+                            <input type="number" id="settingsSalaryAmount" step="0.01" min="0" placeholder="输入金额">
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>工作时间</label>
+                        <div class="setting-row">
+                            <span>上班时间：</span>
+                            <input type="time" id="settingsStartTime" onchange="updateWorkSettings()">
+                        </div>
+                        <div class="setting-row">
+                            <span>下班时间：</span>
+                            <input type="time" id="settingsEndTime" onchange="updateWorkSettings()">
+                        </div>
+                        <div class="setting-row">
+                            <span>工作时长：</span>
+                            <span id="settingsWorkHours">9.0小时</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>动画设置</label>
+                        <div class="setting-row">
+                            <span>金币掉落频率：</span>
+                            <input type="range" id="settingsCoinRate" min="1" max="10" value="3" onchange="updateAnimationSettings()">
+                            <span id="coinRateValue">3</span>
+                        </div>
+                        <div class="setting-row">
+                            <span>钞票出现频率：</span>
+                            <input type="range" id="settingsCashRate" min="1" max="10" value="1" onchange="updateAnimationSettings()">
+                            <span id="cashRateValue">1</span>
+                        </div>
+                        <div class="setting-row">
+                            <span>动画速度：</span>
+                            <input type="range" id="settingsAnimSpeed" min="0.5" max="3" step="0.1" value="1" onchange="updateAnimationSettings()">
+                            <span id="animSpeedValue">1.0x</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>显示设置</label>
+                        <div class="setting-row">
+                            <span>数字更新频率：</span>
+                            <select id="settingsUpdateFreq" onchange="updateDisplaySettings()">
+                                <option value="100">0.1秒</option>
+                                <option value="500">0.5秒</option>
+                                <option value="1000" selected>1秒</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <span>显示小数位数：</span>
+                            <input type="range" id="settingsDecimals" min="0" max="4" value="2" onchange="updateDisplaySettings()">
+                            <span id="decimalsValue">2</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>音效设置</label>
+                        <div class="setting-row">
+                            <span>音效音量：</span>
+                            <input type="range" id="settingsVolume" min="0" max="1" step="0.1" value="0.3" onchange="updateAudioSettings()">
+                            <span id="volumeValue">30%</span>
+                        </div>
+                        <div class="setting-row">
+                            <span>音调高低：</span>
+                            <input type="range" id="settingsPitch" min="0.5" max="2" step="0.1" value="1" onchange="updateAudioSettings()">
+                            <span id="pitchValue">1.0x</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-buttons">
+                        <button class="settings-btn" onclick="applySettings()">应用设置</button>
+                        <button class="settings-btn" onclick="resetToDefaults()">恢复默认</button>
+                        <button class="settings-btn" onclick="toggleSettings()">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+    <!-- 老板键伪装界面 -->
+    <div class="boss-screen" id="bossScreen">
+        <div class="code-editor">
+            <div class="code-line"><span class="line-numbers">1</span><span class="comment">// 系统监控脚本 - 实时性能分析</span></div>
+            <div class="code-line"><span class="line-numbers">2</span><span class="keyword">import</span> <span class="string">"system/monitor"</span></div>
+            <div class="code-line"><span class="line-numbers">3</span><span class="keyword">import</span> <span class="string">"analytics/logger"</span></div>
+            <div class="code-line"><span class="line-numbers">4</span></div>
+            <div class="code-line"><span class="line-numbers">5</span><span class="keyword">func</span> <span class="function">main</span>() {</div>
+            <div class="code-line"><span class="line-numbers">6</span>    <span class="comment">// 初始化监控器</span></div>
+            <div class="code-line"><span class="line-numbers">7</span>    monitor := <span class="function">NewSystemMonitor</span>()</div>
+            <div class="code-line"><span class="line-numbers">8</span>    </div>
+            <div class="code-line"><span class="line-numbers">9</span>    <span class="comment">// 收集CPU使用率</span></div>
+            <div class="code-line"><span class="line-numbers">10</span>    cpuUsage := monitor.<span class="function">GetCPUUsage</span>()</div>
+            <div class="code-line"><span class="line-numbers">11</span>    <span class="keyword">if</span> cpuUsage > <span class="string">80</span> {</div>
+            <div class="code-line"><span class="line-numbers">12</span>        logger.<span class="function">Warn</span>(<span class="string">"CPU使用率过高: %v%%"</span>, cpuUsage)</div>
+            <div class="code-line"><span class="line-numbers">13</span>    }</div>
+            <div class="code-line"><span class="line-numbers">14</span></div>
+            <div class="code-line"><span class="line-numbers">15</span>    <span class="comment">// 监控内存使用情况</span></div>
+            <div class="code-line"><span class="line-numbers">16</span>    memory := monitor.<span class="function">GetMemoryUsage</span>()</div>
+            <div class="code-line"><span class="line-numbers">17</span>    <span class="keyword">for</span> _, proc := <span class="keyword">range</span> memory.<span class="function">Processes</span> {</div>
+            <div class="code-line"><span class="line-numbers">18</span>        <span class="keyword">if</span> proc.<span class="function">Usage</span>() > <span class="string">1GB</span> {</div>
+            <div class="code-line"><span class="line-numbers">19</span>            logger.<span class="function">Info</span>(<span class="string">"进程 %s 内存使用: %v"</span>, proc.<span class="function">Name</span>(), proc.<span class="function">Usage</span>())</div>
+            <div class="code-line"><span class="line-numbers">20</span>        }</div>
+            <div class="code-line"><span class="line-numbers">21</span>    }</div>
+            <div class="code-line"><span class="line-numbers">22</span>}</div>
+            <div class="code-line"><span class="line-numbers">23</span></div>
+            <div class="code-line"><span class="line-numbers">24</span><span class="comment">// 实时更新: 2024-10-27 15:30:45</span></div>
+            <div class="code-line"><span class="line-numbers">25</span><span class="comment">// CPU: 23% | 内存: 4.2GB/16GB | 网络: 1.2MB/s</span></div>
+        </div>
+    </div>
+
+    <script>
+        let salary = 0;
+        let salary = 0;
+        let startTime = null;
+        let isPaused = false;
+        let isMuted = false;
+        let useHourlyInput = false;
+        let workStartHour = 9;
+        let workEndHour = 18;
+        let workMinutes = 60;
+        let animationInterval;
+        let moneyInterval;
+        let updateFrequency = 100;
+        let decimalPlaces = 2;
+        let coinDropRate = 3;
+        let cashDropRate = 1;
+        let animationSpeed = 1;
+        let audioVolume = 0.3;
+        let audioPitch = 1;
+
+        // 初始化检查
+        window.onload = function() {
+            // 加载基础设置
+            const savedSalary = localStorage.getItem('salary');
+            const savedUseHourly = localStorage.getItem('useHourlyInput');
+            const savedStart = localStorage.getItem('workStartTime');
+            const savedEnd = localStorage.getItem('workEndTime');
+            
+            // 加载高级设置
+            coinDropRate = parseInt(localStorage.getItem('coinDropRate')) || 3;
+            cashDropRate = parseInt(localStorage.getItem('cashDropRate')) || 1;
+            animationSpeed = parseFloat(localStorage.getItem('animationSpeed')) || 1;
+            updateFrequency = parseInt(localStorage.getItem('updateFrequency')) || 100;
+            decimalPlaces = parseInt(localStorage.getItem('decimalPlaces')) || 2;
+            audioVolume = parseFloat(localStorage.getItem('audioVolume')) || 0.3;
+            audioPitch = parseFloat(localStorage.getItem('audioPitch')) || 1;
+            
+            if (savedSalary) {
+                const salaryValue = parseFloat(savedSalary);
+                useHourlyInput = savedUseHourly === 'true';
+                salary = useHourlyInput ? salaryValue : salaryValue / (workMinutes / 60);
+                
+                if (savedStart) document.getElementById('workStartTime').value = savedStart;
+                if (savedEnd) document.getElementById('workEndTime').value = savedEnd;
+                
+                updateWorkHours();
+                showMainInterface();
+            }
+            
+            // 监听时间变化
+            document.getElementById('workStartTime').addEventListener('change', updateWorkHours);
+            document.getElementById('workEndTime').addEventListener('change', updateWorkHours);
+        };
+
+        function updateWorkHours() {
+            const startTime = document.getElementById('workStartTime').value;
+            const endTime = document.getElementById('workEndTime').value;
+            
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            
+            let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            if (totalMinutes < 0) totalMinutes += 24 * 60; // 处理跨天情况
+            
+            workMinutes = totalMinutes;
+            workStartHour = startH + startM / 60;
+            workEndHour = endH + endM / 60;
+            
+            document.getElementById('workHoursDisplay').textContent = (workMinutes / 60).toFixed(1);
+        }
+
+        function toggleSalaryMode() {
+            useHourlyInput = !useHourlyInput;
+            const dailyInput = document.getElementById('salaryInput');
+            const hourlyInput = document.getElementById('hourlyInput');
+            const modeText = document.getElementById('modeToggle');
+            
+            if (useHourlyInput) {
+                dailyInput.style.display = 'none';
+                hourlyInput.style.display = 'block';
+                modeText.textContent = '切换为日薪输入';
+            } else {
+                dailyInput.style.display = 'block';
+                hourlyInput.style.display = 'none';
+                modeText.textContent = '切换为时薪输入';
+            }
+        }
+
+        function startMining() {
+            let value;
+            if (useHourlyInput) {
+                value = parseFloat(document.getElementById('hourlyInput').value);
+                salary = value;
+            } else {
+                value = parseFloat(document.getElementById('salaryInput').value);
+                salary = value / (workMinutes / 60); // 计算时薪
+            }
+            
+            if (value <= 0 || isNaN(value)) {
+                alert('请输入有效的薪资！');
+                return;
+            }
+            
+            const startTime = document.getElementById('workStartTime').value;
+            const endTime = document.getElementById('workEndTime').value;
+            
+            localStorage.setItem('salary', value);
+            localStorage.setItem('useHourlyInput', useHourlyInput);
+            localStorage.setItem('workStartTime', startTime);
+            localStorage.setItem('workEndTime', endTime);
+            
+            showMainInterface();
+        }
+
+        function showMainInterface() {
+            document.getElementById('setupContainer').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+            
+            startTime = Date.now();
+            startMoneyCounter();
+            startAnimation();
+        }
+
+        function startMoneyCounter() {
+            moneyInterval = setInterval(() => {
+                if (!isPaused && startTime) {
+                    updateMoneyDisplay();
+                }
+            }, updateFrequency);
+        }
+
+        function updateMoneyDisplay() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const secondsPerWorkDay = workMinutes * 60;
+            
+            let earned = (salary / 3600) * elapsed;
+            
+            document.getElementById('moneyAmount').textContent = `¥ ${earned.toFixed(decimalPlaces)}`;
+            
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            document.getElementById('timeInfo').textContent = `本次摸鱼时长：${hours}小时${minutes}分钟`;
+            
+            let displayText;
+            if (useHourlyInput) {
+                displayText = `今日已赚取 | 时薪：¥${salary.toFixed(decimalPlaces)} | 日工作：${(workMinutes/60).toFixed(1)}小时`;
+            } else {
+                const dailySalary = salary * (workMinutes / 60);
+                displayText = `今日已赚取 | 日薪：¥${dailySalary.toFixed(decimalPlaces)} | 时薪：¥${salary.toFixed(decimalPlaces)}`;
+            }
+            
+            document.getElementById('moneyInfo').textContent = displayText;
+        }
+
+        function startAnimation() {
+            animationInterval = setInterval(() => {
+                if (!isPaused && Math.random() < coinDropRate / 10) {
+                    createCoin();
+                }
+                if (!isPaused && Math.random() < cashDropRate / 10) {
+                    createCash();
+                }
+            }, 1000);
+        }
+
+        function createCoin() {
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            coin.style.left = Math.random() * window.innerWidth + 'px';
+            coin.style.animationDuration = ((Math.random() * 3 + 2) / animationSpeed) + 's';
+            
+            coin.addEventListener('click', function() {
+                this.style.transform = 'scale(1.5)';
+                this.style.opacity = '0';
+                setTimeout(() => this.remove(), 300);
+                if (!isMuted) {
+                    playCoinSound();
+                }
+            });
+            
+            document.body.appendChild(coin);
+            
+            setTimeout(() => {
+                if (coin.parentNode) {
+                    coin.remove();
+                }
+            }, 5000 / animationSpeed);
+        }
+
+        function createCash() {
+            const cash = document.createElement('div');
+            cash.className = 'cash';
+            cash.style.left = Math.random() * window.innerWidth + 'px';
+            cash.style.animationDuration = ((Math.random() * 4 + 3) / animationSpeed) + 's';
+            
+            document.body.appendChild(cash);
+            
+            setTimeout(() => {
+                if (cash.parentNode) {
+                    cash.remove();
+                }
+            }, 7000 / animationSpeed);
+        }
+
+        function playCoinSound() {
+            if (isMuted) return;
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800 * audioPitch, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(1200 * audioPitch, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(audioVolume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? '继续' : '暂停';
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('muteBtn').textContent = isMuted ? '开启声音' : '静音';
+        }
+
+        function resetSettings() {
+            if (confirm('确定要重置所有设置吗？')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'block';
+                loadSettingsToPanel();
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        function loadSettingsToPanel() {
+            // 加载薪资设置
+            document.getElementById('settingsSalaryMode').value = useHourlyInput ? 'hourly' : 'daily';
+            document.getElementById('settingsSalaryAmount').value = localStorage.getItem('salary') || '';
+            
+            // 加载工作时间
+            document.getElementById('settingsStartTime').value = localStorage.getItem('workStartTime') || '09:00';
+            document.getElementById('settingsEndTime').value = localStorage.getItem('workEndTime') || '18:00';
+            updateWorkSettings();
+            
+            // 加载动画设置
+            document.getElementById('settingsCoinRate').value = coinDropRate;
+            document.getElementById('settingsCashRate').value = cashDropRate;
+            document.getElementById('settingsAnimSpeed').value = animationSpeed;
+            document.getElementById('coinRateValue').textContent = coinDropRate;
+            document.getElementById('cashRateValue').textContent = cashDropRate;
+            document.getElementById('animSpeedValue').textContent = animationSpeed.toFixed(1) + 'x';
+            
+            // 加载显示设置
+            document.getElementById('settingsUpdateFreq').value = updateFrequency;
+            document.getElementById('settingsDecimals').value = decimalPlaces;
+            document.getElementById('decimalsValue').textContent = decimalPlaces;
+            
+            // 加载音效设置
+            document.getElementById('settingsVolume').value = audioVolume;
+            document.getElementById('settingsPitch').value = audioPitch;
+            document.getElementById('volumeValue').textContent = Math.round(audioVolume * 100) + '%';
+            document.getElementById('pitchValue').textContent = audioPitch.toFixed(1) + 'x';
+        }
+
+        function updateSalaryMode() {
+            const mode = document.getElementById('settingsSalaryMode').value;
+            useHourlyInput = mode === 'hourly';
+        }
+
+        function updateWorkSettings() {
+            const startTime = document.getElementById('settingsStartTime').value;
+            const endTime = document.getElementById('settingsEndTime').value;
+            
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            
+            let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            if (totalMinutes < 0) totalMinutes += 24 * 60;
+            
+            workMinutes = totalMinutes;
+            document.getElementById('settingsWorkHours').textContent = (workMinutes / 60).toFixed(1) + '小时';
+        }
+
+        function updateAnimationSettings() {
+            coinDropRate = parseInt(document.getElementById('settingsCoinRate').value);
+            cashDropRate = parseInt(document.getElementById('settingsCashRate').value);
+            animationSpeed = parseFloat(document.getElementById('settingsAnimSpeed').value);
+            
+            document.getElementById('coinRateValue').textContent = coinDropRate;
+            document.getElementById('cashRateValue').textContent = cashDropRate;
+            document.getElementById('animSpeedValue').textContent = animationSpeed.toFixed(1) + 'x';
+        }
+
+        function updateDisplaySettings() {
+            updateFrequency = parseInt(document.getElementById('settingsUpdateFreq').value);
+            decimalPlaces = parseInt(document.getElementById('settingsDecimals').value);
+            document.getElementById('decimalsValue').textContent = decimalPlaces;
+        }
+
+        function updateAudioSettings() {
+            audioVolume = parseFloat(document.getElementById('settingsVolume').value);
+            audioPitch = parseFloat(document.getElementById('settingsPitch').value);
+            
+            document.getElementById('volumeValue').textContent = Math.round(audioVolume * 100) + '%';
+            document.getElementById('pitchValue').textContent = audioPitch.toFixed(1) + 'x';
+        }
+
+        function applySettings() {
+            // 保存薪资设置
+            const newSalaryValue = parseFloat(document.getElementById('settingsSalaryAmount').value);
+            if (!isNaN(newSalaryValue) && newSalaryValue > 0) {
+                localStorage.setItem('salary', newSalaryValue);
+                localStorage.setItem('useHourlyInput', useHourlyInput);
+                salary = useHourlyInput ? newSalaryValue : newSalaryValue / (workMinutes / 60);
+            }
+            
+            // 保存工作时间
+            const startTime = document.getElementById('settingsStartTime').value;
+            const endTime = document.getElementById('settingsEndTime').value;
+            localStorage.setItem('workStartTime', startTime);
+            localStorage.setItem('workEndTime', endTime);
+            updateWorkHours();
+            
+            // 保存动画设置
+            localStorage.setItem('coinDropRate', coinDropRate);
+            localStorage.setItem('cashDropRate', cashDropRate);
+            localStorage.setItem('animationSpeed', animationSpeed);
+            
+            // 保存显示设置
+            localStorage.setItem('updateFrequency', updateFrequency);
+            localStorage.setItem('decimalPlaces', decimalPlaces);
+            
+            // 保存音效设置
+            localStorage.setItem('audioVolume', audioVolume);
+            localStorage.setItem('audioPitch', audioPitch);
+            
+            alert('设置已保存！部分设置需要刷新页面才能完全生效。');
+            toggleSettings();
+            
+            // 重启计时器以应用新设置
+            if (moneyInterval) {
+                clearInterval(moneyInterval);
+                startMoneyCounter();
+            }
+        }
+
+        function resetToDefaults() {
+            if (confirm('确定要恢复默认设置吗？')) {
+                // 恢复默认值
+                coinDropRate = 3;
+                cashDropRate = 1;
+                animationSpeed = 1;
+                updateFrequency = 100;
+                decimalPlaces = 2;
+                audioVolume = 0.3;
+                audioPitch = 1;
+                
+                loadSettingsToPanel();
+                alert('已恢复默认设置，点击"应用设置"保存更改。');
+            }
+        }
+
+        function showHelp() {
+            alert(`使用帮助：
+
+• 按 Esc 键切换老板键伪装界面
+• 点击金币可获得额外音效
+• 所有数据仅保存在本地浏览器
+• 可暂停/继续计算
+• 支持日薪和时薪两种模式
+
+祝您摸鱼愉快！`);
+        }
+
+        // 老板键功能
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                const bossScreen = document.getElementById('bossScreen');
+                if (bossScreen.style.display === 'none' || bossScreen.style.display === '') {
+                    bossScreen.style.display = 'block';
+                } else {
+                    bossScreen.style.display = 'none';
+                }
+            }
+        });
+
+        // 防止右键菜单（增加隐蔽性）
+        document.addEventListener('contextmenu', function(e) {
+            if (document.getElementById('bossScreen').style.display === 'block') {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
